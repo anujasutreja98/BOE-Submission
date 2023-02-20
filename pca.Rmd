@@ -1,0 +1,287 @@
+---
+title: "test_boe"
+author: "Anuja Sutreja"
+date: "2023-02-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#reading pca_raw_1 which contains all columns
+```{r}
+pca_raw_1<- read.csv("general_data_pca.csv")
+#looking at the structure of pca_raw_1
+str(pca_raw_1)
+dim(pca_raw_1)
+```
+#pivoting and transforming pca_raw_1
+```{r}
+#installing relevant packages
+library(MASS)
+library(reshape2)
+library(reshape)
+library(stringr)
+
+#removing the first row that contains the year
+pca_raw_1<-pca_raw_1[-c(1),]
+dim(pca_raw_1)
+
+#renaming the column firm 
+colnames(pca_raw_1)[colnames(pca_raw_1) == 'X'] <- 'Firm'
+#melting pca_raw_1
+molten_data <- melt(pca_raw_1,id = c("Firm"))
+#ordering data by firm
+ordered_molten_data<-molten_data[order(molten_data$Firm), ]
+
+#renaming the dataset as transformed_pca_data_1
+transformed_pca_data_1<-ordered_molten_data
+
+
+#creating Metric column
+transformed_pca_data_1$Metric<-str_sub(transformed_pca_data_1$variable, end = -6)
+#removing the variable column
+transformed_pca_data_1<-transformed_pca_data_1[,-c(2)]
+
+#converting value column to numeric
+transformed_pca_data_1$value<-as.numeric(transformed_pca_data_1$value)
+str(transformed_pca_data_1)
+
+#casting the dataset to create columns for metrics. aggregating with the mean value of firms across years
+cast_pca_data_1 = cast(transformed_pca_data_1, Firm~Metric, mean) 
+dim(cast_pca_data_1)
+str(cast_pca_data_1)
+
+#creating a column for firm
+cast_pca_data_1$Firm<-str_sub(cast_pca_data_1$Firm, start = 6)
+cast_pca_data_1$Firm<-as.numeric(cast_pca_data_1$Firm)
+
+
+final_pca_data_1<-cast_pca_data_1
+
+
+final_pca_data_1$Equity<-as.numeric(final_pca_data_1$Equity)
+final_pca_data_1$GWP<-as.numeric(final_pca_data_1$GWP)
+final_pca_data_1$NWP<-as.numeric(final_pca_data_1$NWP)
+final_pca_data_1$SCR<-as.numeric(final_pca_data_1$SCR)
+```
+
+```{r}
+#reading pca_raw_2 which contains all columns
+
+pca_raw_2<- read.csv("underwriting_data_pca.csv")
+
+#looking at the structure of pca_raw_2
+str(pca_raw_2)
+dim(pca_raw_2)
+```
+#pivoting and transforming pca_raw_2
+```{r}
+#removing the first row that contains the year
+pca_raw_2<-pca_raw_2[-c(1),]
+
+dim(pca_raw_2)
+
+#renaming the column firm 
+colnames(pca_raw_2)[colnames(pca_raw_2) == 'X'] <- 'Firm'
+#melting pca_raw_2
+molten_data_2 <- melt(pca_raw_2,id = c("Firm"))
+
+#ordering data by firm
+ordered_molten_data_2<-molten_data_2[order(molten_data_2$Firm), ]
+
+#renaming the dataset as transformed_pca_data_1
+transformed_pca_data_2<-ordered_molten_data_2
+
+#creating Metric column
+transformed_pca_data_2$Metric<-str_sub(transformed_pca_data_2$variable, end = -6)
+
+#removing the variable column
+transformed_pca_data_2<-transformed_pca_data_2[,-c(2)]
+
+#converting value column to numeric
+transformed_pca_data_2$value<-as.numeric(transformed_pca_data_2$value)
+str(transformed_pca_data_2)
+
+
+#casting the dataset to create columns for metrics. aggregating with the mean value of firms across years
+cast_pca_data_2 = cast(transformed_pca_data_2, Firm~Metric, mean) 
+
+dim(cast_pca_data_2)
+str(cast_pca_data_2)
+
+#creating a column for firm
+cast_pca_data_2$Firm<-str_sub(cast_pca_data_2$Firm, start = 6)
+cast_pca_data_2$Firm<-as.numeric(cast_pca_data_2$Firm)
+
+
+final_pca_data_2<-cast_pca_data_2
+
+str(final_pca_data_2)
+final_pca_data_2$Equity<-as.numeric(final_pca_data_2$Equity)
+```
+
+#PCA on dataset_1
+```{r}
+# perform PCA on the final_pca_data_1 dataset
+
+pc_test_1 <- prcomp(final_pca_data_1, center = T, scale. = T)
+```
+
+```{r}
+# calculate the proportion of exaplained variance (PEV) from the std values
+pc_test_var_1 <- pc_test_1$sdev^2
+pc_test_var_1
+pc_test_PEV_1 <- pc_test_var_1 / sum(pc_test_var_1)
+pc_test_PEV_1
+```
+
+```{r}
+# plot the variance per PC
+#   note: this can be done using the plot function on the prcomp object
+plot(pc_test_1)
+```
+```{r}
+# plot the cumulative value of PEV for increasing number of additional PCs
+#adding an 80% threshold line to inform the feature extraction
+#according to the plot the first 2 PCs should be selected
+opar <- par(no.readonly = TRUE)
+plot(
+  cumsum(pc_test_PEV_1),
+  ylim = c(0,1),
+  xlab = 'PC',
+  ylab = 'cumulative PEV',
+  pch = 20,
+  col = 'orange'
+)
+abline(h = 0.8, col = 'red', lty = 'dashed')
+par(opar)
+```
+
+```{r}
+# get and inspect the loadings for each PC
+pc_test_loadings_1 <- pc_test_1$rotation
+pc_test_loadings_1
+```
+
+
+```{r}
+# plot the loadings for the first three PCs as a barplot
+
+opar <- par(no.readonly = TRUE)
+colvector = c('red', 'orange', 'yellow', 'green', 'cyan', 'blue')
+labvector = c('PC1', 'PC2','PC3')
+barplot(
+  pc_test_loadings_1[,c(1:3)],
+  beside = T,
+  yaxt = 'n',
+  names.arg = labvector,
+  col = colvector,
+  ylim = c(-1,1),
+  border = 'white',
+  ylab = 'loadings'
+)
+axis(2, seq(-1,1,0.1))
+legend(
+  'bottomright',
+  bty = 'n',
+  col = colvector,
+  pch = 15,
+  row.names(pc_test_loadings_1)
+)
+par(opar)
+ 
+
+```
+
+#PCA on final_pca_data_2
+```{r}
+# performing PCA on the final_pca_data_2 dataset
+pc_test_2 <- prcomp(final_pca_data_1, center = T, scale. = T)
+```
+
+```{r}
+# calculate the proportion of explained variance (PEV) from the std values
+pc_test_var_2 <- pc_test_2$sdev^2
+pc_test_var_2
+pc_test_PEV_2 <- pc_test_var_2 / sum(pc_test_var_2)
+pc_test_PEV_2
+```
+
+
+```{r}
+# plot the variance per PC
+
+plot(pc_test_2)
+```
+```{r}
+# plot the cumulative value of PEV for increasing number of additional PCs
+#adding an 80% threshold line to inform the feature extraction
+#according to the plot the first 2 PCs should be selected
+opar <- par(no.readonly = TRUE)
+plot(
+  cumsum(pc_test_PEV_2),
+  ylim = c(0,1),
+  xlab = 'PC',
+  ylab = 'cumulative PEV',
+  pch = 20,
+  col = 'orange'
+)
+abline(h = 0.8, col = 'red', lty = 'dashed')
+par(opar)
+```
+
+```{r}
+# get and inspect the loadings for each PC
+
+pc_test_2_loadings <- pc_test_2$rotation
+pc_test_2_loadings
+```
+```{r}
+# plot the loadings for the first three PCs as a barplot
+opar <- par(no.readonly = TRUE)
+colvector = c('red', 'orange', 'yellow', 'green', 'cyan', 'blue')
+labvector = c('PC1', 'PC2', 'PC3')
+barplot(
+  pc_test_2_loadings[,c(1:3)],
+  beside = T,
+  yaxt = 'n',
+  names.arg = labvector,
+  col = colvector,
+  ylim = c(-1,1),
+  border = 'white',
+  ylab = 'loadings'
+)
+axis(2, seq(-1,1,0.1))
+legend(
+  'bottomright',
+  bty = 'n',
+  col = colvector,
+  pch = 15,
+  row.names(pc_test_2_loadings)
+)
+par(opar)
+```
+
+

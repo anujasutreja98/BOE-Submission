@@ -1,0 +1,313 @@
+---
+title: "BOE"
+author: "Anuja Sutreja"
+date: "2023-02-15"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#reading raw_data_1 with selected columns
+```{r}
+raw_data_1 <- read.csv("general_data.csv")
+#Looking at the structure of the dataset
+str(raw_data_1)
+dim(raw_data_1) #326 rows and 21 Columns
+```
+
+#installing relevant packages
+```{r}
+#Required packages for melt() and cast() function
+install.packages("MASS")
+install.packages("reshape2")
+install.packages("reshape")
+#Required library
+library(MASS)
+library(reshape2)
+library(reshape)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+```
+
+#pivoting and transforming raw_data_1
+```{r}
+#melting raw_data_1
+molten_data <- melt(raw_data_1,id = c("Firm"))
+
+
+#Ordering data by firm
+ordered_molten_data<-molten_data[order(molten_data$Firm), ]
+
+#removing blank rows for firm occurring due to the first blank row
+transformed_dataset_1 <- ordered_molten_data[!(ordered_molten_data$Firm == ""),] 
+dim(transformed_dataset_1) #6500 rows and 3 columns
+
+#creating a year column
+transformed_dataset_1$Year<-str_sub(transformed_dataset_1$variable, start = -4)
+#creating Metric column
+transformed_dataset_1$Metric<-str_sub(transformed_dataset_1$variable, end = -6)
+#converting the value column to numeric
+transformed_dataset_1$value<-as.numeric(transformed_dataset_1$value)
+
+#recasting the dataset to get the metrics as columns at the level of the data, i.e: Firm and Year
+cast_data_1 = cast(transformed_dataset_1,Firm+Year~Metric, max) 
+#renaming as  final_dataset
+final_dataset_1<-cast_data_1
+
+#creating a primary key for the dataset
+#concatenating firm and year end to form the key  from the columns "Year" and "Firm"
+
+final_dataset_1$id<-c(paste(final_dataset_1$Firm,final_dataset_1$Year,sep = "_"))
+#Looking at the structure of the transformed dataset
+dim(final_dataset_1) #1625 rows and 7 columns
+str(final_dataset_1)
+```
+
+#creating dataset for clustering 
+```{r}
+#aggregating by taking an average across years
+cluster_dataset_1<-cast(transformed_dataset_1, Firm~Metric, mean)
+str(cluster_dataset_1)
+```
+
+#reading raw_data_2 with selected columns
+```{r}
+raw_data_2 <- read.csv("underwriting_data.csv")
+#Looking at the structure of the dataset
+str(raw_data_2)
+dim(raw_data_2)#457 rows 11 columns
+```
+#pivoting and transforming raw_data_2
+```{r}
+#melting raw_data_2
+molten_data_2 <- melt(raw_data_2,id = c("Firm"))
+
+#Ordering data by firm
+ordered_molten_data_2<-molten_data_2[order(molten_data_2$Firm), ]
+
+#removing blank rows for firm occurring due to the first blank row
+transformed_dataset_2 <- ordered_molten_data_2[!(ordered_molten_data_2$Firm == ""),] 
+dim(transformed_dataset_2) #4560 rows 5 columns
+
+#creating a Year column
+transformed_dataset_2$Year<-str_sub(transformed_dataset_2$variable, start = -4)
+#creating Metric column
+transformed_dataset_2$Metric<-str_sub(transformed_dataset_2$variable, end = -6)
+
+#converting the value column to numeric
+transformed_dataset_2$value<-as.numeric(transformed_dataset_2$value)
+
+#recasting the dataset to get the metrics as columns at the level of the data, i.e: Firm and Year
+cast_data_2 = cast(transformed_dataset_2,Firm+Year~Metric, max) 
+#renaming as  final_dataset_2
+final_dataset_2<-cast_data_2
+
+#creating a primary key for the dataset
+#concatenating firm and year end to form the key  from the columns "Year" and "Firm"
+
+final_dataset_2$id<-c(paste(final_dataset_2$Firm,final_dataset_2$Year,sep = "_"))
+#Looking at the structure of the transformed dataset
+dim(final_dataset_2) #2280 rows and 5 columns
+str(final_dataset_2)
+```
+
+#creating dataset for clustering 
+```{r}
+#aggregating by taking an average across years
+cluster_dataset_2<-cast(transformed_dataset_2, Firm~Metric, mean)
+str(cluster_dataset_2)
+```
+
+#Data Quality Analysis of the two datasets
+```{r}
+#Looking for empty values in daatset_1
+View(final_dataset_1$Firm[final_dataset_1$Firm == ""])
+View(final_dataset_1$Year[final_dataset_1$Year == ""])
+View(final_dataset_1$Equity[final_dataset_1$Equity == ""])
+View(final_dataset_1$GWP[final_dataset_1$GWP == ""])
+View(final_dataset_1$NWP[final_dataset_1$NWP == ""])
+View(final_dataset_1$SCR[final_dataset_1$SCR == ""])
+View(final_dataset_1$id[final_dataset_1$id == ""])
+
+#Looking for empty values in dataset_2
+View(final_dataset_2$Firm[final_dataset_1$Firm == ""])
+View(final_dataset_2$Year[final_dataset_2$Year == ""])
+View(final_dataset_2$gross_claims_incurred[final_dataset_2$gross_claims_incurred == ""])
+View(final_dataset_2$net._combined_ratio[final_dataset_2$net._combined_ratio == ""])
+View(final_dataset_2$id[final_dataset_2$id == ""])
+
+
+#Looking for NA values
+colSums(is.na(final_dataset_1))
+colSums(is.na(final_dataset_2))
+
+#There are no missing values or NA values
+```
+
+#checking for duplicacy and reconfirming if the id column is the primary key
+```{r}
+sum(duplicated(final_dataset_1)) 
+sum(duplicated(final_dataset_2))
+#there are no duplicate records in both datasets
+
+sum(duplicated(final_dataset_1$id))
+sum(duplicated(final_dataset_2$id))
+#id is the primary key for both tables with unique rows
+
+```
+
+#primary level EDA of both the datasets
+
+#Numerical Distribution of the data
+```{r}
+summary(final_dataset_1)
+summary(final_dataset_2)
+```
+
+#Graphical Distribution
+```{r}
+#histogram and Box Plot for:
+#Equity
+ggplot(final_dataset_1, aes(x=Equity)) + geom_histogram(binwidth = 3000) +
+  theme_classic() + ggtitle("Histogram of the Equity")
+
+ggplot(final_dataset_1,aes(x=Equity))+geom_boxplot()+ggtitle("Distribution of Equity")+ylab("Count")
+
+
+#GWP
+ggplot(final_dataset_1, aes(x=GWP)) + geom_histogram(binwidth = 3000) +
+  theme_classic() + ggtitle("Histogram GWP")
+
+ggplot(final_dataset_1,aes(x=GWP))+geom_boxplot()+ggtitle("Distribution of GWP")+ylab("Count")
+
+#NWP
+ggplot(final_dataset_1, aes(x=NWP)) + geom_histogram(binwidth = 3000) +
+  theme_classic() + ggtitle("Histogram NWP")
+
+ggplot(final_dataset_1,aes(x=NWP))+geom_boxplot()+ggtitle("Distribution of NWP")+ylab("Count")
+
+#SCR
+ggplot(final_dataset_1, aes(x=SCR)) + geom_histogram(binwidth = 3000) +
+  theme_classic() + ggtitle("Histogram SCR")
+
+ggplot(final_dataset_1,aes(x=SCR))+geom_boxplot()+ggtitle("Distribution of SCR")+ylab("Count")
+
+
+#Gross claim incurred
+ggplot(final_dataset_2, aes(x=gross_claims_incurred)) + geom_histogram(binwidth = 3000) +
+  theme_classic() + ggtitle("Histogram for Gross claim incurred")
+
+ggplot(final_dataset_2,aes(x=gross_claims_incurred))+geom_boxplot()+ggtitle("Distribution of Gross claim incurred")+ylab("Count")
+
+#Net combined ratio
+ggplot(final_dataset_2, aes(x=net._combined_ratio)) + geom_histogram(binwidth = 3000) +
+  theme_classic() + ggtitle("Histogram for Net combined ratio")
+
+ggplot(final_dataset_2,aes(x=net._combined_ratio))+geom_boxplot()+ggtitle("Distribution of Net combined ratio")+ylab("Count")
+
+
+#Data in the variables are extremely skewed and dont look normally distributed
+```
+#Joining final_dataset_1 and final_dataset_2
+```{r}
+#taking an inner join as there is a discrepancy in the row count for dataset_2 and dataset_1 and hence taking only the common rows
+dim(final_dataset_1) #1625 rows    7 columns
+dim(final_dataset_2) #2280 rows    5 columns
+
+
+joined_data<-inner_join(final_dataset_1, final_dataset_2, by='id')
+dim(joined_data)
+
+joined_data<-joined_data[c('Firm.x','Year.x','Equity','GWP','NWP','SCR_coverage_ratio','id','gross_claims_incurred','net._combined_ratio')]
+
+#renaming columns
+colnames(joined_data)[colnames(joined_data) == 'Firm.x'] <- 'Firm'
+colnames(joined_data)[colnames(joined_data) == 'Year.x'] <- 'YearEnd'
+
+
+#creating a column for firm
+joined_data$Firm<-str_sub(joined_data$Firm, start = 6)
+
+str(joined_data)
+joined_data$Firm<-as.factor(joined_data$Firm)
+write.csv(joined_data, file = "joined_data.csv")
+```
+
+#K means clustering 
+```{r}
+#joining cluster_dataset_1 and cluster_dataset_2
+joined_cluster_data<-inner_join(cluster_dataset_1, cluster_dataset_2, by='Firm')
+
+```
+
+#Elbow method to see the optimal number of clusters
+```{r}
+set.seed(6)
+wcss <- c()
+for(i in 1:10) wcss[i]<-sum(kmeans(joined_cluster_data[,-1], i)$withinss)
+plot(1:10, wcss, type = "b", main = "Cluster of clients", xlab = "No of clusters", ylab = "WCSS")
+```
+
+```{r}
+# k-means
+# Since the optimal number of clusters is 3, we are selecting k = 3 groups
+k_means = kmeans(joined_cluster_data[,-1], 3)
+k_means
+
+# get the cluster id from the kmeans object
+k_cluster_id<-k_means$cluster
+```
+
+# Visualising clusters in 2D
+```{r}
+if(require(cluster) == FALSE){
+  install.packages('cluster')
+}
+
+clusplot(joined_cluster_data[,-1],
+         k_means$cluster,
+         lines = 0,
+         shade = T,
+         color = T,
+         plotchar = F,
+         span = T,
+         main = "Cluster of clients",
+         xlab = "Annual Score",
+         ylab = "Spending Score")
+```
+
+#creating a dataframe subsetting the firms and the respective clusters 
+```{r}
+k_cluster_table<-data.frame(nrow = joined_cluster_data$Firm, ncol = k_cluster_id)
+
+colnames(k_cluster_table)[colnames(k_cluster_table) == 'nrow'] <- 'Firm'
+colnames(k_cluster_table)[colnames(k_cluster_table) == 'ncol'] <- 'k_cluster_id'
+
+k_cluster_table$Firm<-str_sub(k_cluster_table$Firm, start = 6)
+k_cluster_table$Firm<-as.numeric(k_cluster_table$Firm)
+
+k_cluster_table<-k_cluster_table[order(k_cluster_table$k_cluster_id), ]
+```
