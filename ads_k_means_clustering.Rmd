@@ -210,10 +210,10 @@ ggplot(final_dataset_1, aes(x=NWP)) + geom_histogram(binwidth = 3000) +
 ggplot(final_dataset_1,aes(x=NWP))+geom_boxplot()+ggtitle("Distribution of NWP")+ylab("Count")
 
 #SCR
-ggplot(final_dataset_1, aes(x=SCR)) + geom_histogram(binwidth = 3000) +
-  theme_classic() + ggtitle("Histogram SCR")
+ggplot(final_dataset_1, aes(x=SCR_coverage_ratio)) + geom_histogram(binwidth = 3000) +
+  theme_classic() + ggtitle("Histogram SCR_coverage_ratio")
 
-ggplot(final_dataset_1,aes(x=SCR))+geom_boxplot()+ggtitle("Distribution of SCR")+ylab("Count")
+ggplot(final_dataset_1,aes(x=SCR_coverage_ratio))+geom_boxplot()+ggtitle("Distribution of SCR_coverage_ratio")+ylab("Count")
 
 
 #Gross claim incurred
