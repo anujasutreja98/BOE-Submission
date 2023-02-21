@@ -218,7 +218,7 @@ par(opar)
 #PCA on final_pca_data_2
 ```{r}
 # performing PCA on the final_pca_data_2 dataset
-pc_test_2 <- prcomp(final_pca_data_1, center = T, scale. = T)
+pc_test_2 <- prcomp(final_pca_data_2, center = T, scale. = T)
 ```
 
 ```{r}
